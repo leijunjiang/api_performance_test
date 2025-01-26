@@ -46,6 +46,11 @@ jobs:
     - name: Set up Cloud SDK
       uses: 'google-github-actions/setup-gcloud@v1'
 
+    - name: Enable APIs
+      run: |
+        gcloud services enable run.googleapis.com
+        gcloud services enable artifactregistry.googleapis.com
+
     - name: Build and Push
       run: |
         gcloud auth configure-docker europe-west4-docker.pkg.dev
