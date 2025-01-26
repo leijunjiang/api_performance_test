@@ -21,8 +21,6 @@ COPY . .
 # Add environment variables
 ENV RAILS_ENV=production
 ENV PORT=3000
-ARG RAILS_MASTER_KEY
-ENV RAILS_MASTER_KEY=${RAILS_MASTER_KEY}
 
 # Precompile bootsnap
 RUN bundle exec bootsnap precompile --gemfile app/ lib/
