@@ -3,9 +3,9 @@
 # Base image with shared configurations
 FROM ruby:3.2.2-slim
 
-# Install minimal dependencies
+# Install minimal dependencies + debugging tools
 RUN apt-get update -qq && \
-    apt-get install -y build-essential libsqlite3-dev curl && \
+    apt-get install -y build-essential libsqlite3-dev curl vim netcat && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -13,22 +13,31 @@ WORKDIR /app
 
 # Install gems
 COPY Gemfile Gemfile.lock ./
-RUN bundle install --without development test
+RUN bundle install
 
 # Copy application code
 COPY . .
 
 # Add environment variables
 ENV RAILS_ENV=production
-ENV PORT=3000
+ENV PORT=8080
+ARG RAILS_MASTER_KEY
+ENV RAILS_MASTER_KEY=${RAILS_MASTER_KEY}
 
-# Precompile bootsnap
-RUN bundle exec bootsnap precompile --gemfile app/ lib/
+# Initialize database and seed
+RUN bundle exec rails db:create db:migrate db:seed
 
-# Add health check endpoint
-EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/health || exit 1
+# Add debug script
+COPY <<-"EOF" /debug.sh
+#!/bin/bash
+# Start netcat to listen on port 8080
+nc -l -p 8080 &
+# Keep container running
+while true; do
+  sleep 1
+done
+EOF
+RUN chmod +x /debug.sh
 
-# Start the server
-CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0", "-p", "3000"]
+# Use different command for debug mode
+CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0", "-p", "8080"]
