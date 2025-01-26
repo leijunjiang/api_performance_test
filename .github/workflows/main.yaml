@@ -40,7 +40,12 @@ jobs:
       run: |
         gcloud container clusters get-credentials my-gke-cluster --zone europe-west4-b
 
+    - name: Create Secret
+      run: |
+        kubectl create secret generic rails-secrets \
+          --from-literal=master-key=${{ secrets.RAILS_MASTER_KEY }} \
+          --dry-run=client -o yaml | kubectl apply -f -
+
     - name: Deploy to GKE
       run: |
-        kubectl apply -f k8s/secret.yaml
         kubectl apply -f k8s/deployment.yaml
