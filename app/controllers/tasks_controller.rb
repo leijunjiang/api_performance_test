@@ -3,6 +3,7 @@ class TasksController < ApplicationController
 
   # GET /tasks
   def index
+    p '///////////////////////////////////'
     tasks = Task.all
     render json: tasks
   end
