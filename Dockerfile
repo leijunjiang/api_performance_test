@@ -19,6 +19,8 @@ COPY . .
 # Add environment variables
 ENV RAILS_ENV=production
 ENV PORT=8080
+ARG RAILS_MASTER_KEY
+ENV RAILS_MASTER_KEY=${RAILS_MASTER_KEY}
 
 # Initialize database
 RUN bundle exec rails db:create db:migrate
