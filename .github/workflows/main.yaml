@@ -42,8 +42,8 @@ jobs:
 
     - name: Create Secret
       run: |
-        kubectl create secret generic rails-secrets \
-          --from-literal=master-key=${{ secrets.RAILS_MASTER_KEY }} \
+        echo "${{ secrets.RAILS_MASTER_KEY }}" | kubectl create secret generic rails-secrets \
+          --from-file=master-key=/dev/stdin \
           --dry-run=client -o yaml | kubectl apply -f -
 
     - name: Deploy to GKE

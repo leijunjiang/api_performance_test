@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: rails-api
-        image: europe-west4-docker.pkg.dev/quantum-transit-448917-e3/myapp/rails:latest
+        image: gcr.io/quantum-transit-448917-e3/rails-app
         ports:
         - containerPort: 3000
         env:
