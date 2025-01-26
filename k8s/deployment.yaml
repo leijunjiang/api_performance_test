@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-performance-test-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-performance-test  
+  template:
+    metadata:
+      labels:
+        app: api-performance-test 
+    spec:
+      hostNetwork: true
+      containers:
+      - name: api-performance-test 
+        image: gcr.io/quantum-transit-448917-e3/api_performance_test:v1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          hostPort: 3000
+        securityContext:
+          capabilities:
+            add: ["NET_ADMIN", "NET_BIND_SERVICE"]  

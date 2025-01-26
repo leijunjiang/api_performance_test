@@ -1,0 +1,54 @@
+name: Rails CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: 3.2.2
+
+    - name: Install Dependencies
+      run: |
+        bundle install
+        yarn install
+
+    - name: Set up Database
+      run: |
+        sudo apt-get install postgresql postgresql-contrib libpq-dev
+        sudo service postgresql start
+        psql -U postgres -c "CREATE DATABASE test_db;"
+
+    - name: Run Tests
+      run: bundle exec rspec
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Deploy to GKE
+      run: |
+        gcloud container clusters get-credentials my-gke-cluster --zone europe-west4-b
+        kubectl apply -f k8s/deployment.yaml
