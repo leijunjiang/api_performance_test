@@ -49,5 +49,6 @@ jobs:
 
     - name: Deploy to GKE
       run: |
+        sudo apt-get install google-cloud-sdk-gke-gcloud-auth-plugin
         gcloud container clusters get-credentials my-gke-cluster --zone europe-west4-b
         kubectl apply -f k8s/deployment.yaml
