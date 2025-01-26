@@ -50,5 +50,7 @@ jobs:
           --from-literal=master-key=${{ secrets.RAILS_MASTER_KEY }} --dry-run=client -o yaml | kubectl apply -f -
 
     - name: Deploy to GKE
+      env:
+        RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
       run: |
-        kubectl apply -f k8s/deployment.yaml
+        envsubst < k8s/deployment.yaml | kubectl apply -f -
