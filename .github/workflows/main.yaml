@@ -58,5 +58,4 @@ jobs:
           --image europe-west4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myapp/rails:latest \
           --platform managed \
           --region europe-west4 \
-          --zone europe-west4 \
           --allow-unauthenticated
