@@ -1,68 +1,46 @@
-name: Rails CI/CD Pipeline
+name: CI/CD for Rails on GKE
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
-  build-and-test:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
+    - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: 3.2.2
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v2
 
-    - name: Install Dependencies
+    - name: Build Docker image
       run: |
-        bundle install
-        yarn install
+        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/rails-app .
+        echo ${{ secrets.GCP_SERVICE_KEY }} | gcloud auth activate-service-account --key-file=-
+        gcloud auth configure-docker
 
-    - name: Set up Database
+    - name: Push Docker image
       run: |
-        sudo apt-get install sqlite3 libsqlite3-dev
-        bundle exec rails db:setup
-
-    - name: Run Tests
-      run: bundle exec rspec
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/rails-app
 
   deploy:
-    needs: build-and-test
+    needs: build
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Auth to Google Cloud
-      uses: 'google-github-actions/auth@v1'
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v1
       with:
-        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+        credentials_json: ${{ secrets.GCP_SERVICE_KEY }}
 
-    - name: Set up Cloud SDK
-      uses: 'google-github-actions/setup-gcloud@v1'
-
-    - name: Enable APIs
+    - name: Configure kubectl
       run: |
-        gcloud services enable run.googleapis.com
-        gcloud services enable artifactregistry.googleapis.com
+        gcloud container clusters get-credentials my-gke-cluster --zone europe-west4-b
 
-    - name: Build and Push
+    - name: Apply Kubernetes manifests
       run: |
-        gcloud auth configure-docker europe-west4-docker.pkg.dev
-        docker build \
-          --build-arg RAILS_MASTER_KEY=${{ secrets.RAILS_MASTER_KEY }} \
-          -t europe-west4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myapp/rails:latest .
-        docker push europe-west4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myapp/rails:latest
-
-    - name: Deploy to Cloud Run
-      run: |
-        gcloud run deploy myapp \
-          --image europe-west4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myapp/rails:latest \
-          --platform managed \
-          --region europe-west4 \
-          --allow-unauthenticated
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
