@@ -54,3 +54,5 @@ jobs:
         RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
       run: |
         envsubst < k8s/deployment.yaml | kubectl apply -f -
+        kubectl apply -f k8s/service.yaml
+        echo "Service URL: $(kubectl get service rails-api --output jsonpath='{.status.loadBalancer.ingress[0].ip}')"
