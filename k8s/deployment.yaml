@@ -4,7 +4,7 @@ metadata:
   name: rails-secrets
 type: Opaque
 data:
-  master-key: BASE64_ENCODED_MASTER_KEY
+  master-key: $(echo -n "your_actual_master_key" | base64)
 
 ---
 apiVersion: apps/v1
