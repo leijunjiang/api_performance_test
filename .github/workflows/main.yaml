@@ -42,4 +42,5 @@ jobs:
 
     - name: Deploy to GKE
       run: |
+        kubectl apply -f k8s/secret.yaml
         kubectl apply -f k8s/deployment.yaml
