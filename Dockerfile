@@ -1,39 +1,39 @@
 # syntax = docker/dockerfile:1
 
 # Base image with shared configurations
-FROM --platform=linux/amd64 ruby:3.2.2-slim AS base
-RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential git libpq-dev pkg-config
+FROM ruby:3.2.2-slim
 
-# Builder stage for gems and assets
-FROM --platform=linux/amd64 ruby:3.2.2-slim AS builder
-WORKDIR /rails
+# Install dependencies
+RUN apt-get update -qq && \
+    apt-get install -y build-essential libpq-dev nodejs npm sqlite3 libsqlite3-dev
+
+WORKDIR /app
 
 # Install gems
 COPY Gemfile Gemfile.lock ./
-RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential && \
-    bundle install && \
-    rm -rf ~/.bundle/ /usr/local/bundle/ruby/*/cache /usr/local/bundle/ruby/*/bundler/gems/*/.git
+RUN bundle install
+
+# Install JS dependencies
+COPY package.json yarn.lock ./
+RUN npm install -g yarn && yarn install
 
 # Copy application code
 COPY . .
-RUN bundle exec bootsnap precompile --gemfile
 
-# Final stage
-FROM --platform=linux/amd64 ruby:3.2.2-slim
-WORKDIR /rails
+# Precompile assets
+RUN bundle exec rails assets:precompile
 
-# Copy built artifacts
-COPY --from=builder /usr/local/bundle /usr/local/bundle
-COPY --from=builder /rails /rails
+# Add environment variables
+ENV RAILS_ENV=production
+ENV RAILS_SERVE_STATIC_FILES=true
+ENV PORT=8080
 
-# Add user
-RUN useradd rails --create-home --shell /bin/bash && \
-    chown -R rails:rails db log storage tmp
-USER rails:rails
+# Initialize database
+RUN bundle exec rails db:create db:migrate
 
-# Configure the main process to run when running the image
-ENTRYPOINT ["/rails/bin/docker-entrypoint"]
-EXPOSE 3000
-CMD ["./bin/rails", "server"]
+# Start the server
+CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0", "-p", "8080"]
+
+# Health check
+EXPOSE 8080
+HEALTHCHECK CMD curl --fail http://localhost:8080/ || exit 1
