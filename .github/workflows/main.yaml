@@ -2,11 +2,9 @@ name: Rails CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   build-and-test:
@@ -37,21 +35,27 @@ jobs:
   deploy:
     needs: build-and-test
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-
-    - name: Authenticate to GCP
-      uses: google-github-actions/auth@v1
+    - uses: actions/checkout@v3
+    
+    - name: Auth to Google Cloud
+      uses: 'google-github-actions/auth@v1'
       with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-    - name: Deploy to GKE
+    - name: Set up Cloud SDK
+      uses: 'google-github-actions/setup-gcloud@v1'
+
+    - name: Build and Push
       run: |
-        echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-        curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
-        sudo apt-get update
-        sudo apt-get install google-cloud-sdk-gke-gcloud-auth-plugin
-        gcloud container clusters get-credentials my-gke-cluster --zone europe-west4-b
-        kubectl apply -f k8s/deployment.yaml
+        gcloud auth configure-docker
+        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api_performance_test .
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api_performance_test
+
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy api_performance_test \
+          --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/api_performance_test \
+          --platform managed \
+          --region asia-east1 \
+          --allow-unauthenticated
