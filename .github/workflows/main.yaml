@@ -1,46 +1,38 @@
-name: CI/CD for Rails on GKE
+name: Rails CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+    - uses: actions/checkout@v3
+    
+    - name: Auth to Google Cloud
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-    - name: Set up Docker
-      uses: docker/setup-buildx-action@v2
+    - name: Set up Cloud SDK
+      uses: 'google-github-actions/setup-gcloud@v1'
 
-    - name: Build Docker image
+    - name: Configure Docker
       run: |
-        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/rails-app .
-        echo ${{ secrets.GCP_SERVICE_KEY }} | gcloud auth activate-service-account --key-file=-
         gcloud auth configure-docker
 
-    - name: Push Docker image
+    - name: Build and Push
       run: |
+        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/rails-app .
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/rails-app
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Authenticate to GCP
-      uses: google-github-actions/auth@v1
-      with:
-        credentials_json: ${{ secrets.GCP_SERVICE_KEY }}
-
-    - name: Configure kubectl
+    - name: Set up GKE credentials
       run: |
         gcloud container clusters get-credentials my-gke-cluster --zone europe-west4-b
 
-    - name: Apply Kubernetes manifests
+    - name: Deploy to GKE
       run: |
         kubectl apply -f k8s/deployment.yaml
-        kubectl apply -f k8s/service.yaml
