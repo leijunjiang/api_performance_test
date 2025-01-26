@@ -3,9 +3,9 @@
 # Base image with shared configurations
 FROM ruby:3.2.2-slim
 
-# Install minimal dependencies + debugging tools
+# Install minimal dependencies
 RUN apt-get update -qq && \
-    apt-get install -y build-essential libsqlite3-dev curl vim netcat && \
+    apt-get install -y build-essential libsqlite3-dev curl procps && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -13,31 +13,28 @@ WORKDIR /app
 
 # Install gems
 COPY Gemfile Gemfile.lock ./
-RUN bundle install
+RUN bundle install --without development test
 
 # Copy application code
 COPY . .
 
-# Add environment variables
+# Add startup script
+COPY <<-"EOF" /start.sh
+#!/bin/bash
+set -e
+
+# Remove any existing pid file
+rm -f /app/tmp/pids/server.pid
+
+echo "=== Starting Rails Server on port 8080 ==="
+exec bundle exec rails server -p 8080 -b 0.0.0.0
+EOF
+
+RUN chmod +x /start.sh
+
+# Environment variables
 ENV RAILS_ENV=production
 ENV PORT=8080
-ARG RAILS_MASTER_KEY
-ENV RAILS_MASTER_KEY=${RAILS_MASTER_KEY}
+ENV RAILS_LOG_TO_STDOUT=true
 
-# Initialize database and seed
-RUN bundle exec rails db:create db:migrate db:seed
-
-# Add debug script
-COPY <<-"EOF" /debug.sh
-#!/bin/bash
-# Start netcat to listen on port 8080
-nc -l -p 8080 &
-# Keep container running
-while true; do
-  sleep 1
-done
-EOF
-RUN chmod +x /debug.sh
-
-# Use different command for debug mode
-CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0", "-p", "8080"]
+CMD ["/start.sh"]
