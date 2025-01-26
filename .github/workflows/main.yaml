@@ -42,17 +42,15 @@ jobs:
 
     - name: Create Secret
       run: |
-        # Delete existing secret if it exists
         kubectl delete secret rails-secrets --ignore-not-found
-        
-        # Create new secret
         kubectl create secret generic rails-secrets \
-          --from-literal=master-key=${{ secrets.RAILS_MASTER_KEY }} --dry-run=client -o yaml | kubectl apply -f -
+          --from-literal=master-key="${{ secrets.RAILS_MASTER_KEY }}"
 
     - name: Deploy to GKE
-      env:
-        RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
       run: |
-        envsubst < k8s/deployment.yaml | kubectl apply -f -
+        kubectl apply -f k8s/deployment.yaml
         kubectl apply -f k8s/service.yaml
-        echo "Service URL: $(kubectl get service rails-api --output jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+        
+    - name: Wait for deployment
+      run: |
+        kubectl rollout status deployment/rails-api

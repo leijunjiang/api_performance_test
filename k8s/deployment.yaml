@@ -19,16 +19,19 @@ spec:
         - containerPort: 3000
         env:
         - name: RAILS_MASTER_KEY
-          value: ${{ secrets.RAILS_MASTER_KEY }}
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 3000
-          initialDelaySeconds: 5
-          periodSeconds: 10
+          valueFrom:
+            secretKeyRef:
+              name: rails-secrets
+              key: master-key
         readinessProbe:
           httpGet:
             path: /health
             port: 3000
-          initialDelaySeconds: 5
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
           periodSeconds: 10  
