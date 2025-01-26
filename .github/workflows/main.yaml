@@ -28,9 +28,8 @@ jobs:
 
     - name: Set up Database
       run: |
-        sudo apt-get install postgresql postgresql-contrib libpq-dev
-        sudo service postgresql start
-        psql -U postgres -c "CREATE DATABASE test_db;"
+        sudo apt-get install sqlite3 libsqlite3-dev
+        bundle exec rails db:setup
 
     - name: Run Tests
       run: bundle exec rspec
