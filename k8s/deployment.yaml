@@ -1,25 +1,37 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: api-performance-test-deployment
+  name: rails-api
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: api-performance-test  
+      app: rails-api
   template:
     metadata:
       labels:
-        app: api-performance-test 
+        app: rails-api
     spec:
-      hostNetwork: true
       containers:
-      - name: api-performance-test 
-        image: gcr.io/quantum-transit-448917-e3/api_performance_test:v1
-        imagePullPolicy: Always
+      - name: rails-api
+        image: europe-west4-docker.pkg.dev/quantum-transit-448917-e3/myapp/rails:latest
         ports:
         - containerPort: 3000
-          hostPort: 3000
-        securityContext:
-          capabilities:
-            add: ["NET_ADMIN", "NET_BIND_SERVICE"]  
+        env:
+        - name: RAILS_MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: rails-secrets
+              key: master-key
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10  
